@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CODISEC TOTAL ESTADISTICAS</title>
+    <link rel="icon" href="logo.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div id="app-container" class="flex h-screen relative">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar text-white w-72 absolute inset-y-0 left-0 md:relative md:translate-x-0 transform -translate-x-full overflow-y-auto flex flex-col">
+                        <div class="p-4">
+                <img src="logo.png" alt="Logo" class="mx-auto mb-4" style="max-width: 150px;">
+                <h2 class="text-xl font-bold text-center text-white">CODISEC TOTAL ESTADISTICAS</h2>
+            </div>
+            <nav id="nav-menu" class="px-2 pt-4 flex-grow">
+                <!-- Navigation items will be injected here by JavaScript -->
+            </nav>
+            <div id="auth-container" class="p-2 border-t border-slate-700">
+                <!-- Auth buttons will be injected here -->
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main id="main-content" class="main-content flex-1 p-4 md:p-8 overflow-y-auto">
+            <button id="menu-toggle" class="md:hidden p-2 rounded-md bg-slate-700 text-white mb-4 fixed top-4 left-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0-0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                </svg>
+            </button>
+            <div id="content-area" class="mt-12 md:mt-0">
+                <!-- Content for each section will be rendered here -->
+                <div class="text-center p-8 bg-white rounded-lg shadow-md">
+                    <h1 class="text-3xl font-bold text-slate-700">Bienvenido al Sistema de Estadísticas</h1>
+                    <p class="mt-4 text-gray-600">Selecciona una categoría del menú de la izquierda para comenzar a ingresar y visualizar datos.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>

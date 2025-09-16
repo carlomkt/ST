@@ -1,0 +1,24 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Content-Security-Policy",
+            "value": "script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net https://www.gstatic.com https://apis.google.com https://cdn.tailwindcss.com; object-src 'self'"
+          }
+        ]
+      }
+    ]
+  }
+}

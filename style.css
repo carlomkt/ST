@@ -1,0 +1,90 @@
+/* CSS Custom Properties for Theming */
+:root {
+  --color-primary: #3b5994;      /* Dark Blue */
+  --color-primary-text: #ffffff;
+  --color-secondary: #7c94b4;   /* Grayish Blue */
+  --color-background: #ece8eb;  /* Light Gray */
+  --color-surface: #ffffff;     /* White for panels */
+  --color-accent1: #caa7b5;     /* Dusty Pink */
+  --color-accent2: #f16f74;     /* Coral Pink */
+  --color-accent3: #ec3538;     /* Bright Red */
+  --color-text-primary: #2c3e50; /* Darker text for readability */
+  --color-text-secondary: #566573;
+}
+
+html, body {
+    overflow-x: hidden; /* Prevent horizontal scroll when sidebar is off-screen */
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+}
+
+.sidebar {
+    transition: transform 0.3s ease-in-out;
+    background-color: var(--color-primary);
+    color: var(--color-primary-text);
+    z-index: 50; /* Ensure sidebar is above other content */
+}
+
+.main-content {
+    transition: margin-left 0.3s ease-in-out;
+}
+
+/* Custom styling for nav links */
+.nav-link-parent {
+    display: block;
+    padding: 0.625rem 1rem; /* py-2.5 px-4 */
+    border-radius: 0.25rem; /* rounded */
+    transition: background-color 0.2s;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.nav-link-parent:hover {
+    background-color: var(--color-secondary);
+}
+
+.nav-link {
+    font-size: 0.875rem; /* text-sm */
+}
+
+.nav-link:hover {
+    background-color: var(--color-secondary) !important;
+}
+
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #e0e0e0;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--color-accent1);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-secondary);
+}
+
+.table-container {
+    max-height: 60vh;
+    overflow: auto;
+}
+
+.sticky-header th {
+    position: sticky;
+    top: 0;
+    background-color: var(--color-surface);
+    z-index: 10;
+}
+
+/* Ensure menu toggle button is always on top */
+#menu-toggle {
+    z-index: 60; 
+}
