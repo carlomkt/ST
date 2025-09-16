@@ -473,14 +473,7 @@
 
         // --- SECTION RENDERERS -- -
         function renderStandardSection(container, sectionId, section) {
-            let bulkLoadButtonHtml = '';
-            if (isAuthorized) {
-                if (sectionId === 'hurto_robo') {
-                    bulkLoadButtonHtml = `<button type="button" id="bulk-upload-delitos-btn" class="ml-4 w-full md:w-auto justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">Carga Masiva Delitos</button>`;
-                } else if (sectionId === 'operativos') {
-                    bulkLoadButtonHtml = `<button type="button" id="bulk-upload-operativos-btn" class="ml-4 w-full md:w-auto justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500">Carga Masiva Operativos</button>`;
-                }
-            }
+            const bulkLoadButtonHtml = '';
 
             container.innerHTML = `
                 <div id="section-container-${sectionId}" class="bg-[var(--color-surface)] p-6 rounded-lg shadow-xl">
@@ -506,12 +499,6 @@
             const form = document.getElementById(`data-form-${sectionId}`);
             form.addEventListener('submit', (e) => handleFormSubmit(e, sectionId, section, section.fields));
 
-            if (sectionId === 'hurto_robo' && isAuthorized) {
-                document.getElementById('bulk-upload-delitos-btn').addEventListener('click', uploadDelitosComisariaData);
-            }
-            if (sectionId === 'operativos' && isAuthorized) {
-                document.getElementById('bulk-upload-operativos-btn').addEventListener('click', uploadOperativosData);
-            }
             
             form.querySelector('#month-select').addEventListener('change', e => { const monthIndex = e.target.value; const monthName = months[parseInt(monthIndex, 10)].toLowerCase(); const data = currentData[section.collection]?.[monthName] || {}; section.fields.forEach(field => { form.querySelector(`#${slugify(field)}`).value = data[field] || ''; }); });
             form.querySelector('#month-select').dispatchEvent(new Event('change'));
@@ -580,8 +567,6 @@
             const saveButtonContainer = `
                 <div>
                     <button type="submit" class="w-full md:w-auto justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-[var(--color-accent2)] hover:bg-[var(--color-accent3)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--color-accent3)]">Guardar Datos del Mes</button>
-                    ${(sectionId === 'sipcop' && isAuthorized) ? '<button type="button" id="bulk-upload-sipcop-btn" class="ml-4 w-full md:w-auto justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Carga Masiva SIPCOP</button>' : ''}
-                    ${(sectionId === 'observatorio' && isAuthorized) ? '<button type="button" id="bulk-upload-observatorio-btn" class="ml-4 w-full md:w-auto justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">Carga Masiva Observatorio</button>' : ''}
                 </div>
             `;
 
@@ -604,13 +589,6 @@
             const form = document.getElementById(`data-form-${sectionId}`);
             const allRows = section.groups ? section.groups.flatMap(g => g.sub_groups ? g.sub_groups.flatMap(sg => sg.rows) : g.rows) : section.rows;
             form.addEventListener('submit', (e) => handleFormSubmit(e, sectionId, section, allRows));
-
-            if (sectionId === 'sipcop' && isAuthorized) {
-                document.getElementById('bulk-upload-sipcop-btn').addEventListener('click', uploadSipcopData);
-            }
-            if (sectionId === 'observatorio' && isAuthorized) {
-                document.getElementById('bulk-upload-observatorio-btn').addEventListener('click', uploadObservatorioData);
-            }
 
             const populateForm = () => {
                 const monthIndex = form.querySelector('#month-select').value;
@@ -825,6 +803,185 @@
             });
         }
 
+        // --- BULK UPLOAD MODAL ---
+        function initializeBulkUploadModal() {
+            const bulkUploadBtn = document.getElementById('bulk-upload-btn');
+            const bulkUploadModal = document.getElementById('bulk-upload-modal');
+            const cancelBtn = document.getElementById('cancel-btn');
+            const uploadBtn = document.getElementById('upload-btn');
+            const sectionSelect = document.getElementById('section-select-modal');
+
+            // Populate section select
+            const allSections = [];
+            const getSections = (sectionsObject) => {
+                Object.entries(sectionsObject).forEach(([key, section]) => {
+                    if (section.isParent) {
+                        getSections(section.children);
+                    } else {
+                        if (section.type === 'standard' || section.type === 'long_table') {
+                            allSections.push({ key, title: section.title });
+                        }
+                    }
+                });
+            };
+            getSections(sections);
+
+            sectionSelect.innerHTML = allSections.map(s => `<option value="${s.key}">${s.title}</option>`).join('');
+
+            bulkUploadBtn.addEventListener('click', () => {
+                if (isAuthorized) {
+                    bulkUploadModal.classList.remove('hidden');
+                } else {
+                    alert('No tienes autorización para realizar una carga masiva.');
+                }
+            });
+
+            cancelBtn.addEventListener('click', () => {
+                bulkUploadModal.classList.add('hidden');
+            });
+
+            uploadBtn.addEventListener('click', handleFileUpload);
+        }
+
+        async function handleFileUpload() {
+            const sectionKey = document.getElementById('section-select-modal').value;
+            const file = document.getElementById('excel-file').files[0];
+            const section = findSection(sectionKey);
+
+            if (!file || !section) {
+                alert('Por favor, selecciona una sección y un archivo.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                    if (jsonData.length === 0) {
+                        alert('El archivo Excel está vacío o no tiene el formato correcto.');
+                        return;
+                    }
+
+                    if (section.type === 'standard') {
+                        await processStandardBulkUpload(section, jsonData);
+                    } else if (section.type === 'long_table') {
+                        await processLongTableBulkUpload(section, jsonData);
+                    }
+
+                    alert('¡Carga masiva completada con éxito!');
+                    document.getElementById('bulk-upload-modal').classList.add('hidden');
+                    document.getElementById('excel-file').value = ''; // Reset file input
+                } catch (error) {
+                    console.error("Error procesando el archivo:", error);
+                    alert('Hubo un error al procesar el archivo. Revisa la consola para más detalles.');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function processStandardBulkUpload(section, jsonData) {
+            if (!isAuthorized) {
+                alert('No tienes autorización para realizar esta acción.');
+                return;
+            }
+
+            const batch = writeBatch(db);
+            const labelToFieldMap = new Map(section.labels.map((label, index) => [label, section.fields[index]]));
+
+            jsonData.forEach(row => {
+                const monthName = row['Mes']?.toLowerCase();
+                if (!monthName || !months.map(m => m.toLowerCase()).includes(monthName)) {
+                    console.warn(`Fila ignorada: mes inválido o ausente: ${row['Mes']}`, row);
+                    return;
+                }
+
+                const dataToSave = {};
+                for (const [label, value] of Object.entries(row)) {
+                    if (label === 'Mes') continue;
+                    const fieldKey = labelToFieldMap.get(label);
+                    if (fieldKey) {
+                        dataToSave[fieldKey] = !isNaN(parseInt(value, 10)) ? parseInt(value, 10) : 0;
+                    } else {
+                        console.warn(`Columna ignorada en la sección "${section.title}": el encabezado "${label}" no coincide con ninguna etiqueta definida.`);
+                    }
+                }
+
+                if (Object.keys(dataToSave).length > 0) {
+                    const docRef = doc(db, `artifacts/${appId}/users/${userId}/${section.collection}`, monthName);
+                    batch.set(docRef, dataToSave, { merge: true });
+                }
+            });
+
+            try {
+                await batch.commit();
+                alert('¡Datos de sección standard cargados con éxito!');
+            } catch (error) {
+                console.error("Error al cargar datos de sección standard: ", error);
+                alert('Error al cargar los datos.');
+            }
+        }
+
+        async function processLongTableBulkUpload(section, jsonData) {
+            if (!isAuthorized) {
+                alert('No tienes autorización para realizar esta acción.');
+                return;
+            }
+
+            const batch = writeBatch(db);
+            const allRows = section.groups ? section.groups.flatMap(g => g.sub_groups ? g.sub_groups.flatMap(sg => sg.rows) : g.rows) : section.rows;
+            const rowToSlugMap = new Map(allRows.map(row => [row, slugify(row)]));
+            
+            const dataByMonth = {};
+
+            jsonData.forEach(row => {
+                const rowText = row['Tipo de Ocurrencia']; // Assuming this is the header for the row text
+                if (!rowText) {
+                    console.warn('Fila ignorada: "Tipo de Ocurrencia" ausente.', row);
+                    return;
+                }
+                
+                const rowKey = rowToSlugMap.get(rowText);
+                if (!rowKey) {
+                    console.warn(`Fila ignorada en la sección "${section.title}": la ocurrencia "${rowText}" no es válida.`);
+                    return;
+                }
+
+                for (const [header, value] of Object.entries(row)) {
+                    if (header === 'Tipo de Ocurrencia') continue;
+                    
+                    const monthName = header.toLowerCase();
+                    if (months.map(m => m.toLowerCase()).includes(monthName)) {
+                        if (!dataByMonth[monthName]) {
+                            dataByMonth[monthName] = {};
+                        }
+                        dataByMonth[monthName][rowKey] = !isNaN(parseInt(value, 10)) ? parseInt(value, 10) : 0;
+                    } else {
+                        console.warn(`Columna ignorada en la sección "${section.title}": el encabezado de mes "${header}" no es válido.`);
+                    }
+                }
+            });
+
+            for (const [monthName, data] of Object.entries(dataByMonth)) {
+                if (Object.keys(data).length > 0) {
+                    const docRef = doc(db, `artifacts/${appId}/users/${userId}/${section.collection}`, monthName);
+                    batch.set(docRef, data, { merge: true });
+                }
+            }
+
+            try {
+                await batch.commit();
+                alert('¡Datos de sección de tabla larga cargados con éxito!');
+            } catch (error) {
+                console.error("Error al cargar datos de sección de tabla larga: ", error);
+                alert('Error al cargar los datos.');
+            }
+        }
+
         // --- INITIALIZE THE APP -- -
         document.addEventListener('DOMContentLoaded', () => {
             onAuthStateChanged(auth, (user) => {
@@ -834,6 +991,7 @@
                     userEmail = user.email;
                     isAuthorized = AUTHORIZED_EMAILS.includes(user.email);
                     renderApp(user);
+                    initializeBulkUploadModal();
                 } else {
                     // User is signed out. Sign in anonymously.
                     signInAnonymously(auth).catch(err => console.error("Anonymous sign-in failed:", err));
