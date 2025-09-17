@@ -15,13 +15,15 @@ service cloud.firestore {
       allow read: if request.auth != null &&
         request.auth.token.email in [
           'codisecperu@gmail.com',
-          'gerson.angulo.zavaleta@gmail.com'
+          'gerson.angulo.zavaleta@gmail.com',
+          'estadisticachorrillossgs@gmail.com'
         ];
       // Allow delete for authorized users
       allow delete: if request.auth != null &&
         request.auth.token.email in [
           'codisecperu@gmail.com',
-          'gerson.angulo.zavaleta@gmail.com'
+          'gerson.angulo.zavaleta@gmail.com',
+          'estadisticachorrillossgs@gmail.com'
         ];
     }
   }

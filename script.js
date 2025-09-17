@@ -647,11 +647,11 @@
                         <canvas id="chart-robos-personas"></canvas>
                     </div>
                     <div class="bg-[#faf9fb] p-4 rounded-lg shadow-md">
-                        <h3 class="text-lg font-semibold text-[var(--color-secondary)] mb-4">Delitos por Comisaría (Último Mes)</h3>
+                        <h3 class="text-lg font-semibold text-[var(--color-secondary)] mb-4">Delitos por Comisaría (Anual)</h3>
                         <canvas id="chart-delitos-comisaria"></canvas>
                     </div>
                     <div class="bg-[#faf9fb] p-4 rounded-lg shadow-md">
-                        <h3 class="text-lg font-semibold text-[var(--color-secondary)] mb-4">Tipos de Operativos (Último Mes)</h3>
+                        <h3 class="text-lg font-semibold text-[var(--color-secondary)] mb-4">Tipos de Operativos (Anual)</h3>
                         <canvas id="chart-tipos-operativos"></canvas>
                     </div>
                 </div>
@@ -702,24 +702,32 @@
                 data: { labels: months, datasets: [{ label: 'Presuntos Robos a Personas', data: robosData, borderColor: '#3b5994', backgroundColor: 'rgba(59, 89, 148, 0.1)', fill: true, tension: 0.1 }] }
             });
 
-            // Chart 3: Delitos por Comisaría
+            // Chart 3: Delitos por Comisaría (Anual)
             const hurtoRoboData = currentData.hurto_robo || {};
-            const lastMonthWithData = [...months].reverse().find(m => hurtoRoboData[m.toLowerCase()] && Object.keys(hurtoRoboData[m.toLowerCase()]).length > 0);
-            const lastMonthData = lastMonthWithData ? hurtoRoboData[lastMonthWithData.toLowerCase()] : {};
             const hurtoRoboLabels = findSection('hurto_robo').labels;
-            const hurtoRoboValues = findSection('hurto_robo').fields.map(f => lastMonthData[f] || 0);
+            const hurtoRoboFields = findSection('hurto_robo').fields;
+            const hurtoRoboValues = hurtoRoboFields.map(field => {
+                return months.reduce((total, month) => {
+                    const monthData = hurtoRoboData[month.toLowerCase()];
+                    return total + (monthData && monthData[field] ? monthData[field] : 0);
+                }, 0);
+            });
             charts.delitosComisaria = new Chart(document.getElementById('chart-delitos-comisaria').getContext('2d'), {
                 type: 'doughnut',
                 data: { labels: hurtoRoboLabels, datasets: [{ label: 'Delitos', data: hurtoRoboValues, backgroundColor: chartColors }] },
                 options: { responsive: true, plugins: { legend: { position: 'top' } } }
             });
 
-            // Chart 4: Tipos de Operativos
+            // Chart 4: Tipos de Operativos (Anual)
             const operativosData = currentData.operativos || {};
-            const lastMonthOperativos = [...months].reverse().find(m => operativosData[m.toLowerCase()] && Object.keys(operativosData[m.toLowerCase()]).length > 0);
-            const lastMonthOperativosData = lastMonthOperativos ? operativosData[lastMonthOperativos.toLowerCase()] : {};
             const operativosLabels = findSection('operativos').labels;
-            const operativosValues = findSection('operativos').fields.map(f => lastMonthOperativosData[f] || 0);
+            const operativosFields = findSection('operativos').fields;
+            const operativosValues = operativosFields.map(field => {
+                return months.reduce((total, month) => {
+                    const monthData = operativosData[month.toLowerCase()];
+                    return total + (monthData && monthData[field] ? monthData[field] : 0);
+                }, 0);
+            });
             charts.tiposOperativos = new Chart(document.getElementById('chart-tipos-operativos').getContext('2d'), {
                 type: 'bar',
                 data: { labels: operativosLabels, datasets: [{ label: 'Nro. de Operativos', data: operativosValues, backgroundColor: chartColors }] },
