@@ -14,7 +14,7 @@
   appId: "1:1006950405629:web:fdb7f3f92e6f80a786f594"
 };
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-serenazgo-app';
-        const AUTHORIZED_EMAILS = ['codisecperu@gmail.com', 'gerson.angulo.zavaleta@gmail.com'];
+        const AUTHORIZED_EMAILS = ['codisecperu@gmail.com', 'gerson.angulo.zavaleta@gmail.com', 'R123jayo@gmail.com', 'estadisticachorrillossgs@gmail.com', 'carlo.mkt@gmail.com'];
 
         // --- FIREBASE INITIALIZATION -- -
         const app = initializeApp(firebaseConfig);
@@ -51,6 +51,7 @@
 
         // --- APPLICATION SECTIONS DEFINITION -- -
         const sections = {
+            'graficos': { type: 'custom', title: 'Gráficos Comparativos', renderer: renderGraficosSection },
             'aprobaciones': { title: 'Aprobaciones', type: 'custom', renderer: renderAprobacionesSection, authorizedOnly: true },
             'estadisticas_generales': {
                 type: 'long_table', title: 'Estadísticas Generales', collection: 'estadisticas_generales',
@@ -98,7 +99,6 @@
                     }
                 ]
             },
-            'graficos': { type: 'custom', title: 'Gráficos Comparativos', renderer: renderGraficosSection },
             'recursos': {
                 title: 'Recursos',
                 isParent: true,
@@ -133,7 +133,7 @@
                 }
             },
             'frustacion_robos': { type: 'standard', title: 'Frustración de Robos', collection: 'frustacion_robos', fields: ['chorrillos_centro', 'matellini', 'pumacahua', 'san_genaro', 'cedros_villa'], labels: ['01 Chorrillos Centro', '02 Matellini', '03 Pumacahua', '04 San Genaro', '05 Cedros de Villa'] },
-            'operativos': { type: 'standard', title: 'Operativos y Patrullaje', collection: 'operativos', fields: ['serenazgo', 'escuadron_verde', 'halcones', 'integrado', 'convenio', 'brigada_canina'], labels: ['Operativos Serenazgo', 'Op. Escuadrón Verde', 'Op. con Halcones', 'Patrullaje Integrado', 'Patrullaje por Convenio', 'Brigada Canina'] },
+            'operativos': { type: 'standard', title: 'Operativos y Patrullaje', collection: 'operativos', fields: ['serenazgo', 'escuadron_verde', 'halcones', 'integrado', 'convenio', 'brigada_canina'], labels: ['Patrullaje Municipal', 'Op. Escuadrón Verde', 'Op. con Halcones', 'Patrullaje Integrado', 'Patrullaje por Convenio', 'Brigada Canina'] },
             'hurto_robo': { type: 'standard', title: 'Delitos por Comisaría', collection: 'hurto_robo', fields: ['chorrillos_hurto', 'chorrillos_robo', 'villa_hurto', 'villa_robo', 'mateo_hurto', 'mateo_robo', 'san_genaro_hurto', 'san_genaro_robo'], labels: ['Hurto (Chorrillos)', 'Robo (Chorrillos)', 'Hurto (Villa)', 'Robo (Villa)', 'Hurto (Mateo)', 'Robo (Mateo)', 'Hurto (San Genaro)', 'Robo (San Genaro)'] },
             'sipcop': { type: 'long_table', title: 'Ocurrencias SIPCOP', collection: 'sipcop', groups: [
                     { title: "01 EMISION DE ALERTAS TEMPRANAS EN APOYO A LA PNP , EN ACTIVIDADES PRESUNTAMENTE DELICTIVAS", rows: ["0101 PRESUNTAS ACTIVIDADES CONTRA LA VIDA EL CUERPO Y LA SALUD", "0102 PRESUNTA ACTIVIDAD CONTRA LA LIBERTAD", "0103 PRESUNTAS ACTIVIDADES CONTRA EL PATRIMONIO", "0104 PRESUNTAS ACTIVIDADES CONTRA LA SEG. PUB.", "0105 PRE. ACTIV.CONTRA LA SALUD PUB.", "0106 PRE. ACTIV. AMBIENTALES", "0107 PRESUNTA ACTIVIDAD CONTRA LA TRANQUILIDAD PUB", "0108 PRESUNTAS ACTIV. CONTRA LA ADM. PUB.", "0109 PRE. ACTIV. CONTRA LOS PODERES DEL ESTADO"] },
@@ -169,12 +169,59 @@
             }
         };
         
+        async function migrateUserData() {
+            if (!isAuthorized || !userId) {
+                alert('Solo los usuarios autorizados pueden migrar datos.');
+                return;
+            }
+
+            const confirmation = confirm('¿Estás seguro de que quieres migrar tus datos antiguos a la nueva estructura compartida? Esta acción no se puede deshacer.');
+            if (!confirmation) {
+                return;
+            }
+
+            alert('Iniciando migración. Este proceso puede tardar unos minutos. No cierres esta ventana.');
+
+            try {
+                const allCollections = Object.values(sections)
+                    .flatMap(s => s.isParent ? Object.values(s.children).flatMap(c => c.isParent ? Object.values(c.children) : [c]) : [s])
+                    .map(s => s.collection)
+                    .filter(Boolean);
+                const uniqueCollections = [...new Set(allCollections)];
+
+                for (const collectionName of uniqueCollections) {
+                    const oldCollectionPath = `artifacts/${appId}/users/${userId}/${collectionName}`;
+                    const newCollectionPath = `artifacts/${appId}/shared/data/${collectionName}`;
+                    
+                    const querySnapshot = await getDocs(collection(db, oldCollectionPath));
+                    if (querySnapshot.empty) {
+                        console.log(`No data found in ${oldCollectionPath} for user ${userId}. Skipping.`);
+                        continue;
+                    }
+
+                    const batch = writeBatch(db);
+                    querySnapshot.forEach(docSnapshot => {
+                        const newDocRef = doc(db, newCollectionPath, docSnapshot.id);
+                        batch.set(newDocRef, docSnapshot.data(), { merge: true });
+                    });
+
+                    await batch.commit();
+                    console.log(`Successfully migrated collection ${collectionName} for user ${userId}.`);
+                }
+
+                alert('¡Migración completada con éxito! Todos tus datos han sido movidos a la estructura compartida.');
+            } catch (error) {
+                console.error('Error durante la migración de datos:', error);
+                alert('Ocurrió un error durante la migración. Revisa la consola para más detalles.');
+            }
+        }
+
         function renderApp(user) {
             renderNavMenu();
             updateAuthUI(user);
             setupEventListeners();
             // Load initial content area
-            document.getElementById('content-area').innerHTML = `<div class="text-center p-8 bg-white rounded-lg shadow-md"><h1 class="text-3xl font-bold text-[var(--color-primary)]">Bienvenido al Sistema de Estadísticas</h1><p class="mt-4 text-gray-600">Selecciona una categoría del menú para comenzar.</p></div>`;
+            renderSection('graficos');
         }
 
         function updateAuthUI(user) {
@@ -185,6 +232,7 @@
                     <div class="text-center">
                         <p class="text-sm text-white mb-2">Autorizado: ${user.displayName || user.email}</p>
                         <button id="logout-btn" class="w-full text-sm py-2 px-4 rounded-md bg-[var(--color-accent2)] hover:bg-[var(--color-accent3)] transition-colors">Cerrar Sesión</button>
+                        <button id="migrate-btn" class="w-full text-sm mt-2 py-2 px-4 rounded-md bg-orange-500 hover:bg-orange-600 transition-colors">Migrar Mis Datos Antiguos</button>
                     </div>
                 `;
             } else {
@@ -271,6 +319,9 @@
                 if (e.target.id === 'logout-btn') {
                     signOut(auth).catch(error => console.error("Logout failed:", error));
                 }
+                if (e.target.id === 'migrate-btn') {
+                    migrateUserData();
+                }
             });
         }
 
@@ -289,7 +340,7 @@
             else if (section.type === 'custom') section.renderer(contentArea, sectionId, section);
 
             if (section.collection) {
-                const collectionPath = `artifacts/${appId}/users/${userId}/${section.collection}`;
+                const collectionPath = `artifacts/${appId}/shared/data/${section.collection}`;
                 const unsubscribe = onSnapshot(collection(db, collectionPath), (snapshot) => {
                     currentData[section.collection] = {};
                     snapshot.forEach(doc => { currentData[section.collection][doc.id] = doc.data(); });
@@ -317,7 +368,7 @@
 
             if (isAuthorized) {
                 try {
-                    const docRef = doc(db, `artifacts/${appId}/users/${userId}/${section.collection}`, monthName);
+                    const docRef = doc(db, `artifacts/${appId}/shared/data/${section.collection}`, monthName);
                     await setDoc(docRef, dataToSave, { merge: true });
                     alert('¡Datos guardados con éxito!');
                 } catch (error) {
@@ -366,7 +417,7 @@
                         monthData[rowKey] = item[monthKey];
                     }
                 });
-                const docRef = doc(db, `artifacts/${appId}/users/${userId}/sipcop`, monthName);
+                const docRef = doc(db, `artifacts/${appId}/shared/data/sipcop`, monthName);
                 batch.set(docRef, monthData, { merge: true });
             });
         
@@ -398,7 +449,7 @@
                         monthData[rowKey] = item[monthKey];
                     }
                 });
-                const docRef = doc(db, `artifacts/${appId}/users/${userId}/observatorio`, monthName);
+                const docRef = doc(db, `artifacts/${appId}/shared/data/observatorio`, monthName);
                 batch.set(docRef, monthData, { merge: true });
             });
         
@@ -428,7 +479,7 @@
                         monthData[field] = data[field];
                     }
                 });
-                const docRef = doc(db, `artifacts/${appId}/users/${userId}/hurto_robo`, monthName);
+                const docRef = doc(db, `artifacts/${appId}/shared/data/hurto_robo`, monthName);
                 batch.set(docRef, monthData, { merge: true });
             });
         
@@ -458,7 +509,7 @@
                         monthData[field] = data[field];
                     }
                 });
-                const docRef = doc(db, `artifacts/${appId}/users/${userId}/operativos`, monthName);
+                const docRef = doc(db, `artifacts/${appId}/shared/data/operativos`, monthName);
                 batch.set(docRef, monthData, { merge: true });
             });
         
@@ -663,7 +714,7 @@
             const allCollections = Object.values(sections).flatMap(s => s.isParent ? Object.values(s.children).flatMap(c => c.isParent ? Object.values(c.children) : c) : s).map(s => s.collection).filter(Boolean);
             const uniqueCollections = [...new Set(allCollections)];
             for (const collectionName of uniqueCollections) {
-                const collectionPath = `artifacts/${appId}/users/${userId}/${collectionName}`;
+                const collectionPath = `artifacts/${appId}/shared/data/${collectionName}`;
                 const querySnapshot = await getDocs(collection(db, collectionPath));
                 currentData[collectionName] = {};
                 querySnapshot.forEach(doc => { currentData[collectionName][doc.id] = doc.data(); });
@@ -785,7 +836,7 @@
                         }
                         const change = pendingDocSnap.data();
                         // NOTE: This uses the currently logged-in admin's UID to write the data, not the original submitter's.
-                        const finalDocRef = doc(db, `artifacts/${appId}/users/${userId}/${change.collection}`, change.month);
+                        const finalDocRef = doc(db, `artifacts/${appId}/shared/data/${change.collection}`, change.month);
                         
                         const batch = writeBatch(db);
                         batch.set(finalDocRef, change.data, { merge: true });
@@ -920,7 +971,7 @@
                 }
 
                 if (Object.keys(dataToSave).length > 0) {
-                    const docRef = doc(db, `artifacts/${appId}/users/${userId}/${section.collection}`, monthName);
+                    const docRef = doc(db, `artifacts/${appId}/shared/data/${section.collection}`, monthName);
                     batch.set(docRef, dataToSave, { merge: true });
                 }
             });
@@ -976,7 +1027,7 @@
 
             for (const [monthName, data] of Object.entries(dataByMonth)) {
                 if (Object.keys(data).length > 0) {
-                    const docRef = doc(db, `artifacts/${appId}/users/${userId}/${section.collection}`, monthName);
+                    const docRef = doc(db, `artifacts/${appId}/shared/data/${section.collection}`, monthName);
                     batch.set(docRef, data, { merge: true });
                 }
             }

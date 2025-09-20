@@ -2,28 +2,35 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow anonymous users to read/write their own artifacts
+    // Allow anonymous users to read/write their own artifacts (for migration)
     match /artifacts/{appId}/users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Rule for shared data for authorized users
+    match /artifacts/{appId}/shared/data/{document=**} {
+      allow read, write: if request.auth != null &&
+        request.auth.token.email in [
+          'codisecperu@gmail.com',
+          'gerson.angulo.zavaleta@gmail.com',
+          'estadisticachorrillossgs@gmail.com',
+          'R123jayo@gmail.com',
+          'carlo.mkt@gmail.com'
+        ];
     }
 
     // Allow pending_changes collection for submissions
     match /pending_changes/{changeId} {
       // Allow create for authenticated users
       allow create: if request.auth != null;
-      // Allow read for authorized users (admins)
-      allow read: if request.auth != null &&
+      // Allow read, delete for authorized users (admins)
+      allow read, delete: if request.auth != null &&
         request.auth.token.email in [
           'codisecperu@gmail.com',
           'gerson.angulo.zavaleta@gmail.com',
-          'estadisticachorrillossgs@gmail.com'
-        ];
-      // Allow delete for authorized users
-      allow delete: if request.auth != null &&
-        request.auth.token.email in [
-          'codisecperu@gmail.com',
-          'gerson.angulo.zavaleta@gmail.com',
-          'estadisticachorrillossgs@gmail.com'
+          'estadisticachorrillossgs@gmail.com',
+          'R123jayo@gmail.com',
+          'carlo.mkt@gmail.com'
         ];
     }
   }
